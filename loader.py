@@ -72,6 +72,12 @@ class Main(object):
             help="Endpoints to split the load")
 
         self.parser.add_argument("-n", dest="record_count", help="Number of records to load", type=int)
+
+        self.parser.add_argument("--total-records", dest="total_record_count",
+            help="Number of total records in case of multiple loaders",
+            type=int, default=0)
+
+        self.parser.add_argument("--start-record", dest="start_record", help="Starting record in case of multiple loaders", type=int, default=0)
         self.parser.add_argument("-j", dest="split_factor", help="Number of instances to run", type=int)
         self.parser.add_argument("-o", "--logs-dir", dest="logs_dir", help="Create a log file for each YCSB instance")
 
@@ -157,17 +163,21 @@ class Main(object):
             base_args.append("-P")
             base_args.append(arg)
 
+        if self.args.total_record_count == 0:
+           self.args.total_record_count  = self.args.record_count
+
+        # note that it is total record count we want to upload
         base_args.append("-p")
-        base_args.append("recordcount=" + str(self.args.record_count))
+        base_args.append("recordcount=" + str(self.args.total_record_count))
 
         start_time = time.time()
 
         batch_size = self.args.record_count / self.args.split_factor
         records_left = self.args.record_count
         for i in range(self.args.split_factor):
-            start_record = i * batch_size
+            start_record = self.args.start_record + i * batch_size
             count = batch_size
-            if start_record + count > self.args.record_count:
+            if start_record + count > self.args.start_record + self.args.record_count:
                 count = self.args.record_count - start_record
             self.execute_ycsb(base_args, i, start_record, count)
             if self.args.sleep:
